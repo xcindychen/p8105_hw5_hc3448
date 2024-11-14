@@ -56,7 +56,7 @@ sim_res |>
   ggplot(aes(x=n, y=prob)) +
   geom_line() +
   labs(
-    x = "Sample Size",           
+    x = "Group Size",           
     y = "Probability",        
     title = "Probability of shared birthday by group size" 
   )
@@ -68,8 +68,82 @@ When the group size increases, the probability that at least two people in the g
 ### Problem 2
 
 ```{r}
+n = 30
+sigma = 5
+mu_list = 0:6
+alpha = 0.05
+n_dataset = 5000
+```
+
+```{r}
+sim_t_test = function(mu){
+  x = rnorm(n, mean = mu, sd = sigma)
+  test_result = broom::tidy(t.test(x, mu = 0))
+  tibble(
+    estimate = test_result[["estimate"]],
+    p_value = test_result[["p.value"]]
+  )
+}
+
+sim_result = 
+  expand_grid(
+    mu = mu_list,
+    iteration = 1: n_dataset
+  ) |>
+  mutate(
+    result_df = map(mu, sim_t_test)
+  ) |>
+  unnest(result_df)
+
+power_result = 
+  sim_result |>
+  group_by(mu) |>
+  summarize(power = mean(p_value < alpha))
 
 ```
 
+```{r}
+power_result |>
+  ggplot(aes(x = mu, y = power)) +
+  geom_line() +
+  labs(
+    x = "True mean",           
+    y = "Power",        
+    title = "Power of one sample t-test by true mean" 
+  ) 
+```
+
+The graph shows that the power of the test increases when the true means increases. It suggests that a higher the probability of rejecting the null hypothesis when the effect size is larger. 
+
+
+```{r}
+estimate_result =
+  sim_result |>
+  group_by(mu) |>
+  summarize(
+    avg_estimate = mean(estimate),
+    avg_estimate_rej = mean(estimate[p_value < alpha], na.rm = TRUE)
+  )
+```
+
+
+```{r}
+estimate_result |>
+  ggplot(aes(x = mu)) +
+  geom_line(aes(y = avg_estimate, color = "All")) +
+  geom_line(aes(y = avg_estimate_rej, color = "Null Rejected")) +
+  labs(
+    x = "True mean",           
+    y = "Average estimate of mean",        
+    title = "Average estimate mean by true mean (Comparing all to null rejected)" 
+  )
+```
+
+The graph shows that the average estimate of μ for rejected tests is generally higher than the true value, particularly for smaller effect sizes. This inflation occurs because only larger estimates are likely to exceed the significance threshold of α = 0.05, thus skewing the average upward in cases where the null hypothesis is rejected
 
 ### Problem 3
+
+```{r}
+
+```
+
