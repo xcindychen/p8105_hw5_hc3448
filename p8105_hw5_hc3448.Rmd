@@ -143,7 +143,71 @@ The graph shows that the average estimate of μ for rejected tests is generally 
 
 ### Problem 3
 
-```{r}
+```{r message = FALSE}
+homicide_df = read.csv("data/homicide-data.csv")
+```
 
+The raw data contains `r nrow(homicide_df)` criminal homicides in 50 large U.S. cities and the variables includes the reported date, disposition, city, victims' name, sex, race, and age.
+
+```{r}
+homicide_sum = 
+  homicide_df |>
+  mutate(city_state = paste(city, state, sep = ", ")) |>
+  group_by(city_state) |>
+  summarize(
+    total_number_homicides = n(),
+    number_unsolved_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest"),
+                                    na.rm = TRUE)
+  ) 
+homicide_sum |> knitr::kable()
+```
+
+
+```{r}
+baltimore_df = 
+  homicide_sum |>
+  filter(city_state == "Baltimore, MD")
+  
+baltimore_test = 
+  prop.test(
+    baltimore_df[['number_unsolved_homicides']],
+    baltimore_df[['total_number_homicides']]
+  ) |> 
+  broom::tidy()
+
+baltimore_result <- baltimore_test |> 
+  select(estimate, conf.low, conf.high)
+
+baltimore_result |> knitr::kable()
+```
+
+```{r message= FALSE, warning=FALSE }
+unsolved_func = function(unsolved, total){
+  test_result = prop.test(unsolved, total)
+  broom::tidy(test_result) |>
+    select(estimate, conf.low, conf.high)
+}
+
+all_city_unsolved =
+  homicide_sum |>
+  mutate(
+    test_result = purrr::map2(number_unsolved_homicides, total_number_homicides, \(x,y) unsolved_func(x,y))
+  )|>
+  unnest(test_result)
+
+all_city_unsolved |> knitr::kable(digit = 3)
+```
+
+```{r fig.width=10, fig.height=6}
+all_city_unsolved |>
+  ggplot(aes(y = reorder(city_state, estimate), x = estimate)) +
+  geom_point(size = 0.5) +
+  geom_errorbar(aes(xmin = conf.low, xmax = conf.high)) +
+  labs(
+    x = "Estimated proportion of unsolved homicide",
+    y = "City, State",
+    title = "The estimates and CIs for each city"
+  ) 
+  
 ```
 
