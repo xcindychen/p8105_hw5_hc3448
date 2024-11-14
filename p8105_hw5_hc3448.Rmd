@@ -2,7 +2,7 @@
 title: "p8105_hw5_hc3448"
 author: "HsiYu Chen"
 date: "2024-11-13"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
